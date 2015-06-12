@@ -44,7 +44,7 @@ def _redirect(request, login_complete_view, form_class, redirect_field_name):
     params = urlencode({
         'response_type': 'code',
         'scope': utils.scopes(),
-        # 'redirect_uri': request.build_absolute_uri(reverse(login_complete_view)),
+        'redirect_uri': request.build_absolute_uri(reverse(login_complete_view)),
         'client_id': provider.client_id,
         'state': nonce.state
     })
@@ -75,7 +75,7 @@ def login_complete(request, login_complete_view='oidc-complete',
     provider = nonce.provider
     log.debug('Login started from provider %s' % provider)
 
-    params = {
+    data = {
         'grant_type': 'authorization_code',
         'code': request.GET['code'],
         'redirect_uri': request.build_absolute_uri(reverse(login_complete_view))
@@ -83,7 +83,7 @@ def login_complete(request, login_complete_view='oidc-complete',
 
     response = requests.post(provider.token_endpoint,
                              auth=provider.client_credentials,
-                             params=params, verify=oidc_settings.VERIFY_SSL)
+                             data=data, verify=oidc_settings.VERIFY_SSL)
 
     if response.status_code != 200:
         raise errors.RequestError(provider.token_endpoint, response.status_code)
