@@ -31,16 +31,16 @@ class Nonce(models.Model):
         """This method generates and returns a nonce, an unique generated
         string. If the maximum of retries is exceeded, it returns None.
         """
-        CHARS = string.letters + string.digits
+        chars = string.letters + string.digits
 
         for i in range(5):
-            _hash = ''.join(random.choice(CHARS) for n in range(length))
+            _hash = ''.join(random.choice(chars) for n in range(length))
 
             try:
-                log.debug('Attempt %s to save nonce %s to issuer %s' % (i+1,
-                    _hash, issuer))
+                log.debug('Attempt %s to save nonce %s to issuer %s' % (i + 1,
+                          _hash, issuer))
                 return cls.objects.create(issuer_url=issuer, state=_hash,
-                        redirect_url=redirect_url)
+                                          redirect_url=redirect_url)
             except IntegrityError:
                 pass
 
@@ -73,7 +73,8 @@ class OpenIDProvider(models.Model):
     token_endpoint = models.URLField()
     userinfo_endpoint = models.URLField()
     jwks_uri = models.URLField(null=True, blank=True)
-    signing_alg = models.CharField(max_length=5, choices=SIGNING_ALGS, default=HS256)
+    signing_alg = models.CharField(max_length=5, choices=SIGNING_ALGS,
+                                   default=HS256)
 
     client_id = models.CharField(max_length=255)
     client_secret = models.CharField(max_length=255)
@@ -87,7 +88,8 @@ class OpenIDProvider(models.Model):
         then it'll fetch its data according to OpenID Connect Discovery spec.
         """
         if not (issuer or credentials):
-            raise ValueError('You should provide either an issuer or credentials')
+            raise ValueError('You should provide either an issuer or\
+ credentials')
 
         if not issuer:
             issuer = cls._get_issuer(credentials['id_token'])
@@ -99,9 +101,11 @@ class OpenIDProvider(models.Model):
         except cls.DoesNotExist:
             pass
 
-        log.debug('Provider %s not discovered yet, proceeding discovery' % issuer)
+        log.debug('Provider %s not discovered yet, proceeding discovery' %
+                  issuer)
         discover_endpoint = urljoin(issuer, '.well-known/openid-configuration')
-        response = requests.get(discover_endpoint, verify=oidc_settings.VERIFY_SSL)
+        response = requests.get(discover_endpoint,
+                                verify=oidc_settings.VERIFY_SSL)
 
         if response.status_code != 200:
             raise errors.RequestError(discover_endpoint, response.status_code)
@@ -143,7 +147,8 @@ class OpenIDProvider(models.Model):
             raise errors.InvalidIdToken()
 
         if header['alg'] not in ['HS256', 'RS256']:
-            raise errors.UnsuppportedSigningMethod(header['alg'], ['HS256', 'RS256'])
+            raise errors.UnsuppportedSigningMethod(header['alg'], ['HS256',
+                                                                   'RS256'])
 
         id_token = JWS().verify_compact(token, self.signing_keys)
         log.debug('Token verified, %s' % id_token)
@@ -173,7 +178,8 @@ def get_default_provider():
         return
 
     issuer = args.get('issuer')
-    provider, created = OpenIDProvider.objects.get_or_create(issuer=issuer, defaults=args)
+    provider, created = OpenIDProvider.objects.get_or_create(issuer=issuer,
+                                                             defaults=args)
 
     if created:
         return provider
@@ -197,8 +203,9 @@ def get_default_provider():
 class OpenIDUser(models.Model):
     sub = models.CharField(max_length=255, unique=True)
     issuer = models.ForeignKey(OpenIDProvider)
-    user = models.OneToOneField(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'),
-            related_name='oidc_account')
+    user = models.OneToOneField(getattr(settings, 'AUTH_USER_MODEL',
+                                        'auth.User'),
+                                related_name='oidc_account')
 
     access_token = models.CharField(max_length=255)
     refresh_token = models.CharField(max_length=255)
@@ -208,7 +215,7 @@ class OpenIDUser(models.Model):
 
     @classmethod
     def get_or_create(cls, id_token, access_token, refresh_token, provider):
-        UserModel = get_user_model()
+        user_model = get_user_model()
 
         try:
             oidc_acc = cls.objects.get(sub=id_token['sub'])
@@ -221,28 +228,31 @@ class OpenIDUser(models.Model):
             log.debug('OpenIDUser found, sub %s' % oidc_acc.sub)
             return oidc_acc
         except cls.DoesNotExist:
-            log.debug("OpenIDUser for sub %s not found, so it'll be created" % id_token['sub'])
+            log.debug("OpenIDUser for sub %s not found, so it'll be created" %
+                      id_token['sub'])
 
         # Find an existing User locally or create a new one
         try:
-            user = UserModel.objects.get(username__iexact=id_token['sub'])
+            user = user_model.objects.get(username__iexact=id_token['sub'])
             log.debug('Found user with username %s locally' % id_token['sub'])
-        except UserModel.MultipleObjectsReturned:
-            user = UserModel.objects.filter(username__iexact=id_token['sub'])[0]
-            log.warn('Multiple users found with username %s! First match will be selected' % id_token['sub'])
-        except UserModel.DoesNotExist:
+        except user_model.MultipleObjectsReturned:
+            user = user_model.objects.filter(
+                username__iexact=id_token['sub'])[0]
+            log.warn('Multiple users found with username %s!\
+ First match will be selected' % id_token['sub'])
+        except user_model.DoesNotExist:
             log.debug('User with username %s not found locally, '
                       'so it will be created' % id_token['sub'])
 
             claims = cls._get_userinfo(provider, id_token['sub'],
-                    access_token, refresh_token)
+                                       access_token, refresh_token)
 
-            user = UserModel()
+            user = user_model()
 
-            user.username   = claims['preferred_username']
-            user.email      = claims['email']
+            user.username = claims['preferred_username']
+            user.email = claims['email']
             user.first_name = claims['given_name']
-            user.last_name  = claims['family_name']
+            user.last_name = claims['family_name']
             user.set_unusable_password()
 
             user.save()
@@ -251,7 +261,7 @@ class OpenIDUser(models.Model):
         try:
             oidc_acc = cls.objects.get(user=user)
 
-            oidc_acc.sub= id_token['sub']
+            oidc_acc.sub = id_token['sub']
             oidc_acc.access_token = access_token
             oidc_acc.refresh_token = refresh_token
             oidc_acc.save()
@@ -259,13 +269,15 @@ class OpenIDUser(models.Model):
             log.debug('OpenIDUser found, sub %s' % oidc_acc.sub)
             return oidc_acc
         except cls.DoesNotExist:
-            log.debug("OpenIDUser for sub %s not found, so it'll be created" % id_token['sub'])
+            log.debug("OpenIDUser for sub %s not found, so it'll be created" %
+                      id_token['sub'])
 
         return cls.objects.create(sub=id_token['sub'], issuer=provider,
-                user=user, access_token=access_token, refresh_token=refresh_token)
+                                  user=user, access_token=access_token,
+                                  refresh_token=refresh_token)
 
     @classmethod
-    def _get_userinfo(self, provider, sub, access_token, refresh_token):
+    def _get_userinfo(cls, provider, sub, access_token, refresh_token):
         # TODO encapsulate this?
         log.debug('Requesting userinfo in %s. sub: %s, access_token: %s' % (
             provider.userinfo_endpoint, sub, access_token))
@@ -274,7 +286,8 @@ class OpenIDUser(models.Model):
         }, verify=oidc_settings.VERIFY_SSL)
 
         if response.status_code != 200:
-            raise errors.RequestError(provider.userinfo_endpoint, response.status_code)
+            raise errors.RequestError(provider.userinfo_endpoint,
+                                      response.status_code)
 
         claims = response.json()
 
@@ -282,7 +295,7 @@ class OpenIDUser(models.Model):
             raise errors.InvalidUserInfo()
 
         name = '%s %s' % (claims['given_name'], claims['family_name'])
-        log.debug('userinfo of sub: %s -> name: %s, preferred_username: %s, email: %s' % (sub,
-            name, claims['preferred_username'], claims['email']))
+        log.debug('userinfo of sub: %s -> name: %s, preferred_username: %s,\
+ email: %s' % (sub, name, claims['preferred_username'], claims['email']))
 
         return claims

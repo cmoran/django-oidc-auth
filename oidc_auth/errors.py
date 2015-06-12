@@ -17,14 +17,15 @@ class InvalidIdToken(OpenIDConnectError, ValueError):
 class UnsuppportedSigningMethod(OpenIDConnectError, ValueError):
     def __init__(self, unsupported_method, supported_methods):
         message = 'Signing method %s not supported, options are (%s)' % (
-                unsupported_method, ', '.join(supported_methods))
+            unsupported_method, ', '.join(supported_methods))
 
         super(UnsuppportedSigningMethod, self).__init__(message)
 
 
 class RequestError(OpenIDConnectError):
     def __init__(self, url, status_code):
-        message = 'GET %s returned %s status code (200 expected)' % (url, status_code)
+        message = 'GET %s returned %s status code (200 expected)' %\
+            (url, status_code)
         super(RequestError, self).__init__(message)
 
 
@@ -37,4 +38,5 @@ class ForbiddenAuthRequest(OpenIDConnectError):
 
 
 class MissingRedirectURL(OpenIDConnectError):
-    message = "Missing URL for oidc redirect (maybe DEFAULT_ENDPOINT's missing on settings?)"
+    message = "Missing URL for oidc redirect (maybe DEFAULT_ENDPOINT's missing\
+ on settings?)"

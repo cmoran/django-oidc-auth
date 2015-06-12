@@ -9,6 +9,6 @@ if __name__ == "__main__":
     from django.conf import settings
 
     if '--no-migrations' in sys.argv:
-        settings.SOUTH_TESTS_MIGRATE=False
+        settings.SOUTH_TESTS_MIGRATE = False
         sys.argv.remove('--no-migrations')
     execute_from_command_line(sys.argv)

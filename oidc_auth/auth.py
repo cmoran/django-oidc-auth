@@ -7,11 +7,11 @@ class OpenIDConnectBackend(object):
     supports_anonymous_user = True
 
     def get_user(self, user_id):
-        UserModel = get_user_model()
+        user_model = get_user_model()
 
         try:
-            return UserModel.objects.get(pk=user_id)
-        except UserModel.DoesNotExist:
+            return user_model.objects.get(pk=user_id)
+        except user_model.DoesNotExist:
             return None
 
     def authenticate(self, **kwargs):
@@ -23,10 +23,11 @@ class OpenIDConnectBackend(object):
             provider = credentials['provider']
             id_token = provider.verify_id_token(credentials['id_token'])
 
-            oidc_user = OpenIDUser.get_or_create(id_token,
-                    credentials['access_token'],
-                    credentials.get('refresh_token', ''),
-                    provider)
+            oidc_user = OpenIDUser.get_or_create(
+                id_token,
+                credentials['access_token'],
+                credentials.get('refresh_token', ''),
+                provider)
 
             return oidc_user.user
         except Exception as e:

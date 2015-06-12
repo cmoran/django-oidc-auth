@@ -5,7 +5,6 @@ admin.autodiscover()
 
 
 urlpatterns = patterns('views',
-    url(r'^$', 'index'),
-    url(r'^oidc/', include('oidc_auth.urls')),
-    url(r'^admin/', include(admin.site.urls)),
-)
+                       url(r'^$', 'index'),
+                       url(r'^oidc/', include('oidc_auth.urls')),
+                       url(r'^admin/', include(admin.site.urls)),)

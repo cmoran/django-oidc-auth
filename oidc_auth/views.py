@@ -1,7 +1,8 @@
 from urllib import urlencode
 from django.conf import settings
 from django.http import HttpResponseBadRequest
-from django.contrib.auth import REDIRECT_FIELD_NAME, authenticate, login as django_login
+from django.contrib.auth import REDIRECT_FIELD_NAME, authenticate,\
+    login as django_login
 from django.core.urlresolvers import reverse
 from django.shortcuts import render, redirect
 import requests
@@ -15,12 +16,13 @@ from .models import OpenIDProvider, get_default_provider, Nonce
 
 
 def login_begin(request, template_name='oidc/login.html',
-        form_class=OpenIDConnectForm,
-        login_complete_view='oidc-complete',
-        redirect_field_name=REDIRECT_FIELD_NAME):
+                form_class=OpenIDConnectForm,
+                login_complete_view='oidc-complete',
+                redirect_field_name=REDIRECT_FIELD_NAME):
 
     if _redirect_to_provider(request):
-        return _redirect(request, login_complete_view, form_class, redirect_field_name)
+        return _redirect(request, login_complete_view,
+                         form_class, redirect_field_name)
 
     log.debug('Rendering login template at %s' % template_name)
     return render(request, template_name)
@@ -37,14 +39,16 @@ def _redirect(request, login_complete_view, form_class, redirect_field_name):
 
         provider = OpenIDProvider.discover(issuer=form.cleaned_data['issuer'])
 
-    redirect_url = request.GET.get(redirect_field_name, settings.LOGIN_REDIRECT_URL)
+    redirect_url = request.GET.get(redirect_field_name,
+                                   settings.LOGIN_REDIRECT_URL)
     nonce = Nonce.generate(redirect_url, provider.issuer)
     request.session['oidc_state'] = nonce.state
 
     params = urlencode({
         'response_type': 'code',
         'scope': utils.scopes(),
-        'redirect_uri': request.build_absolute_uri(reverse(login_complete_view)),
+        'redirect_uri': request.build_absolute_uri(
+            reverse(login_complete_view)),
         'client_id': provider.client_id,
         'state': nonce.state
     })
@@ -55,7 +59,7 @@ def _redirect(request, login_complete_view, form_class, redirect_field_name):
 
 
 def login_complete(request, login_complete_view='oidc-complete',
-        error_template_name='oidc/error.html'):
+                   error_template_name='oidc/error.html'):
 
     if 'error' in request.GET:
         return render(request, error_template_name, {
@@ -78,7 +82,8 @@ def login_complete(request, login_complete_view='oidc-complete',
     data = {
         'grant_type': 'authorization_code',
         'code': request.GET['code'],
-        'redirect_uri': request.build_absolute_uri(reverse(login_complete_view))
+        'redirect_uri': request.build_absolute_uri(
+            reverse(login_complete_view))
     }
 
     response = requests.post(provider.token_endpoint,
@@ -86,7 +91,8 @@ def login_complete(request, login_complete_view='oidc-complete',
                              data=data, verify=oidc_settings.VERIFY_SSL)
 
     if response.status_code != 200:
-        raise errors.RequestError(provider.token_endpoint, response.status_code)
+        raise errors.RequestError(provider.token_endpoint,
+                                  response.status_code)
 
     log.debug('Token exchange done, proceeding authentication')
     credentials = response.json()
