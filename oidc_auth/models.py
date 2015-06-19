@@ -1,13 +1,12 @@
 import string
 import random
-import json
-from urlparse import urljoin
 import requests
+
+from urlparse import urljoin
 from django.db import models, IntegrityError
 from django.conf import settings
-from jwkest.jwk import load_jwks_from_url
+from jwkest.jwk import KEYS, SYMKey
 from jwkest.jws import JWS
-from jwkest.jwk import SYMKey
 
 from . import errors
 from .settings import oidc_settings
@@ -140,7 +139,10 @@ class OpenIDProvider(models.Model):
     def signing_keys(self):
         if self.signing_alg == self.RS256:
             # TODO perform caching, OBVIOUS
-            return load_jwks_from_url(self.jwks_uri)
+            key = KEYS()
+            key.load_from_url(self.jwks_uri)
+            rsa_key = key.as_dict()['RSA']
+            return rsa_key
 
         return [SYMKey(key=str(self.client_secret))]
 
@@ -156,10 +158,10 @@ class OpenIDProvider(models.Model):
         if header['alg'] not in ['HS256', 'RS256']:
             raise errors.UnsuppportedSigningMethod(header['alg'], ['HS256',
                                                                    'RS256'])
-
+        token = token.encode('utf-8')
         id_token = JWS().verify_compact(token, self.signing_keys)
         log.debug('Token verified, %s' % id_token)
-        return json.loads(id_token)
+        return id_token
 
     @staticmethod
     def _get_issuer(token):
