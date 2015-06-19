@@ -111,6 +111,7 @@ class OpenIDProvider(models.Model):
             raise errors.RequestError(discover_endpoint, response.status_code)
 
         configs = response.json()
+        signing_alg = 'id_token_signing_alg_values_supported'
         provider = cls()
 
         provider.issuer = configs['issuer']
@@ -118,6 +119,12 @@ class OpenIDProvider(models.Model):
         provider.token_endpoint = configs['token_endpoint']
         provider.userinfo_endpoint = configs['userinfo_endpoint']
         provider.jwks_uri = configs['jwks_uri']
+        if len(configs.get(signing_alg, [])) > 0:
+            provider.signing_alg = configs[signing_alg][0]
+
+        if settings.OIDC_CLIENT_ID and settings.OIDC_CLIENT_SECRET:
+            provider.client_id = settings.OIDC_CLIENT_ID
+            provider.client_secret = settings.OIDC_CLIENT_SECRET
 
         if save:
             provider.save()
